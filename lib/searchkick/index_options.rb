@@ -13,7 +13,32 @@ module Searchkick
         index_type = index_type.call if index_type.respond_to?(:call)
       end
 
+      if options[:mappings] and options[:mappings][:nested_type_paths] then
+        nested_type_paths = options[:mappings].delete(:nested_type_paths)
+
+        nested_mapping = {}
+        nested_type_paths.each do |path|
+          path = path.split('.')
+
+          path_mapping = {}
+          path.reverse_each.with_index do |value, index|
+            path_mapping = {
+              "#{value}": (
+                index == 0 ?
+                  { type: "nested" } :
+                  { properties: path_mapping }
+              )
+            }
+          end
+
+          nested_mapping = nested_mapping.deep_merge(path_mapping)
+        end
+
+        options[:mappings] = options[:mappings].deep_merge(nested_mapping)
+      end
+
       custom_mapping = options[:mappings] || {}
+
       if below70 && custom_mapping.keys.map(&:to_sym).include?(:properties)
         # add type
         custom_mapping = {index_type => custom_mapping}

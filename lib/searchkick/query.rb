@@ -18,7 +18,7 @@ module Searchkick
       unknown_keywords = options.keys - [:aggs, :block, :body, :body_options, :boost,
         :boost_by, :boost_by_distance, :boost_by_recency, :boost_where, :conversions, :conversions_term, :debug, :emoji, :exclude, :execute, :explain,
         :fields, :highlight, :includes, :index_name, :indices_boost, :limit, :load,
-        :match, :misspellings, :models, :model_includes, :offset, :operator, :order, :padding, :page, :per_page, :profile,
+        :match, :misspellings, :models, :model_includes, :nested, :offset, :operator, :order, :padding, :page, :per_page, :profile,
         :request_params, :routing, :scope_results, :scroll, :select, :similar, :smart_aggs, :suggest, :total_entries, :track, :type, :where]
       raise ArgumentError, "unknown keywords: #{unknown_keywords.join(", ")}" if unknown_keywords.any?
 
@@ -454,6 +454,7 @@ module Searchkick
         # start everything as efficient filters
         # move to post_filters as aggs demand
         filters = where_filters(where)
+
         post_filters = []
 
         # aggregations
@@ -882,6 +883,8 @@ module Searchkick
           filters << {bool: {must_not: where_filters(value)}}
         elsif field == :_and
           filters << {bool: {must: value.map { |or_statement| {bool: {filter: where_filters(or_statement)}} }}}
+        elsif field == :_nested
+          filters << {nested: { path: value.delete(:path), query: (value.is_a?(String) ? value : where_filters(value)) }}
         # elsif field == :_script
         #   filters << {script: {script: {source: value, lang: "painless"}}}
         else
